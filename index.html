@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Warlike Browser</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- Barre d'onglets -->
+    <div id="tab-bar">
+      <div id="tabs"></div>
+      <button id="new-tab-btn" title="Nouvel onglet (Ctrl+T)">+</button>
+    </div>
+
+    <!-- Barre de navigation -->
+    <div id="nav-bar">
+      <button id="back-btn" title="Retour">◀</button>
+      <button id="forward-btn" title="Avancer">▶</button>
+      <button id="reload-btn" title="Recharger (Ctrl+R)">↻</button>
+      <input id="url-bar" type="text" placeholder="Rechercher ou entrer une URL" spellcheck="false">
+      <button id="go-btn" title="Y aller">➜</button>
+    </div>
+
+    <!-- Conteneur des iframes -->
+    <div id="webviews-container"></div>
+
+  </div>
+  <script src="script/renderer.js"></script>
+</body>
+</html>
