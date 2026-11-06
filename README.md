@@ -47,3 +47,7 @@ Il te faut **Node.js** installé au préalable (v18+ recommandé).
 npm install --save-dev electron-builder
 npx electron-builder --win   # ou --mac / --linux
 ```
+
+## Limites et protections du prototype
+
+**Important :** le code courant utilise des iframes HTML, pas des webviews natives ; de nombreux sites interdisent les iframes. Le conteneur Electron est sandboxé, interdit la navigation de sa fenêtre principale et refuse l'ouverture de fenêtres distantes. Les iframes utilisent une sandbox et la barre d'adresse ne navigue que vers des URLs HTTP(S) sans identifiants intégrés ; certaines applications web ne pourront donc pas fonctionner correctement. Ceci n'est **pas** un navigateur sécurisé ou complet pour des usages sensibles. Les comportements Electron réels doivent être testés sur Windows.
