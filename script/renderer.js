@@ -12,6 +12,7 @@ const newTabBtn = document.getElementById('new-tab-btn');
 
 const HOMEPAGE = 'https://duckduckgo.com';
 const SEARCH_ENGINE = (q) => `https://duckduckgo.com/?q=${encodeURIComponent(q)}`;
+const safeHttpUrl = (value) => { try { const u=new URL(value); return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password?u.href:null; } catch { return null; } };
 
 const tabs = [];
 let activeTabId = null;
@@ -19,6 +20,7 @@ let nextId = 1;
 
 // -------- Création d'onglet --------
 function createTab(url = HOMEPAGE) {
+  url = safeHttpUrl(url) || HOMEPAGE;
   const id = nextId++;
 
   // Élément UI
@@ -35,7 +37,8 @@ function createTab(url = HOMEPAGE) {
   const iframe = document.createElement('iframe');
   iframe.src = url;
   iframe.dataset.id = id;
-  iframe.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
+  iframe.setAttribute('referrerpolicy', 'no-referrer');
+  iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-popups');
   framesContainer.appendChild(iframe);
 
   // Objet onglet (avec historique manuel — impossible de lire history cross-origin)
@@ -120,6 +123,7 @@ function updateNavButtons() {
 }
 
 function loadUrlInTab(tab, url) {
+  url=safeHttpUrl(url);if(!url)return;
   tab.currentUrl = url;
   tab.iframe.src = url;
   if (activeTabId === tab.id) {
@@ -143,6 +147,7 @@ function navigate(input) {
     url = SEARCH_ENGINE(query);
   }
 
+  url=safeHttpUrl(url) || SEARCH_ENGINE(query);
   // Coupe l'historique forward et ajoute la nouvelle URL
   tab.history = tab.history.slice(0, tab.historyIndex + 1);
   tab.history.push(url);
