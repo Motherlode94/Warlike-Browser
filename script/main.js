@@ -14,10 +14,14 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       webviewTag: true,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: true
     }
   });
 
+  // The browser chrome must not navigate to remote origins.
+  win.webContents.on('will-navigate', event => event.preventDefault());
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.loadFile('index.html');
   // win.webContents.openDevTools(); // décommenter pour debug
 }
