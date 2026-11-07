@@ -202,3 +202,6 @@ html, body {
 .browser-notice.iframe-help{inset:auto 18px 18px auto;gap:10px;flex-direction:row;border:1px solid #344057;border-radius:12px;padding:10px 12px;background:#111827ee;box-shadow:0 4px 20px #0007;font-size:12px}
 .browser-notice.iframe-help button{font-size:12px;padding:9px}
 @media(max-width:700px){.browser-notice.iframe-help{left:12px;right:12px;flex-direction:column}.browser-notice{padding:20px}}
+
+#webviews-container webview{position:absolute;inset:0;width:100%;height:100%;display:none;background:#0a0e1a}
+#webviews-container webview.active{display:flex}
