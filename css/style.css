@@ -191,3 +191,14 @@ html, body {
 #tabs::-webkit-scrollbar { height: 4px; }
 #tabs::-webkit-scrollbar-thumb { background: #1a2030; border-radius: 2px; }
 #tabs::-webkit-scrollbar-thumb:hover { background: #dc143c; }
+
+/* Local dashboard and fallback for pages refusing iframe embedding. */
+.browser-notice{display:none;position:absolute;inset:0;z-index:2;align-items:center;justify-content:center;flex-direction:column;padding:30px;text-align:center;gap:16px;background:radial-gradient(ellipse at top,#151d2d,#080c14);color:#e8edf8}
+.browser-notice.active{display:flex}
+.browser-notice h1{font-size:clamp(24px,4vw,38px);max-width:650px}
+.browser-notice p{max-width:560px;color:#a9b7cc;line-height:1.6;font-size:15px}
+.browser-notice button{background:#aa1835;border:1px solid #e64860;border-radius:10px;padding:12px 18px;color:white;cursor:pointer;font:inherit}
+.browser-notice button:hover{background:#cf1e42}
+.browser-notice.iframe-help{inset:auto 18px 18px auto;gap:10px;flex-direction:row;border:1px solid #344057;border-radius:12px;padding:10px 12px;background:#111827ee;box-shadow:0 4px 20px #0007;font-size:12px}
+.browser-notice.iframe-help button{font-size:12px;padding:9px}
+@media(max-width:700px){.browser-notice.iframe-help{left:12px;right:12px;flex-direction:column}.browser-notice{padding:20px}}
