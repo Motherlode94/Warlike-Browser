@@ -19,6 +19,17 @@ function createWindow() {
     }
   });
 
+  // Guest pages never receive Node.js or a preload bridge. Reject non-web URLs.
+  win.webContents.on('will-attach-webview', (event, webPreferences, params) => {
+    try {
+      const url = new URL(params.src || 'about:blank');
+      if (!['https:', 'http:', 'about:'].includes(url.protocol) || url.username || url.password) throw Error('Unsafe guest URL');
+    } catch { event.preventDefault(); return; }
+    delete webPreferences.preload;
+    webPreferences.nodeIntegration = false;
+    webPreferences.contextIsolation = true;
+    webPreferences.sandbox = true;
+  });
   // The browser chrome must not navigate to remote origins.
   win.webContents.on('will-navigate', event => event.preventDefault());
   win.webContents.setWindowOpenHandler(({ url }) => {
