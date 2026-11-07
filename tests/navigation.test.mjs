@@ -23,3 +23,14 @@ test('Site content remains an iframe, clearly labeled as limited',()=>{
  assert.match(read('script/renderer.js'),/allow-forms allow-scripts allow-popups/);
  assert.match(read('css/style.css'),/browser-notice\.active/);
 });
+
+test('google.fr and regional Google domains use fallback on Pages, native browsing on Electron',()=>{
+ const source=read('script/renderer.js');
+ assert.match(source,/isDesktop = window\.browserAPI\?\.nativeTabs === true/);
+ assert.ok(source.includes("document.createElement(isDesktop?'webview':'iframe')"));
+ assert.ok(source.includes("!isDesktop&&isKnownBlocked(url)"));
+ assert.match(source,/google\\\.\(\?:\[a-z\]/);
+ assert.ok(source.includes("did-navigate"));
+ assert.ok(read('script/preload.js').includes('nativeTabs: true'));
+ assert.ok(read('script/main.js').includes('will-attach-webview'));
+});
