@@ -11,12 +11,13 @@ const goBtn = document.getElementById('go-btn');
 const newTabBtn = document.getElementById('new-tab-btn');
 
 const HOMEPAGE = 'warlike:home';
-const IFRAME_BLOCKED_HOSTS = ['duckduckgo.com','google.com','bing.com','youtube.com','facebook.com','instagram.com','github.com'];
-const isKnownBlocked = url => {try{const host=new URL(url).hostname.toLowerCase();return IFRAME_BLOCKED_HOSTS.some(domain=>host===domain||host.endsWith('.'+domain))}catch{return false}};
+const IFRAME_BLOCKED_HOSTS = ['duckduckgo.com','bing.com','youtube.com','facebook.com','instagram.com','github.com'];
+const isKnownBlocked = url => {try{const host=new URL(url).hostname.toLowerCase();return /(^|\.)google\.(?:[a-z]{2,3}\.)?[a-z]{2,3}$/.test(host)||IFRAME_BLOCKED_HOSTS.some(domain=>host===domain||host.endsWith('.'+domain))}catch{return false}};
 const openExternal = url => { const safe=safeHttpUrl(url);if(safe)window.open(safe,'_blank','noopener,noreferrer'); };
 const SEARCH_ENGINE = (q) => `https://duckduckgo.com/?q=${encodeURIComponent(q)}`;
 const safeHttpUrl = (value) => { try { const u=new URL(value); return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password?u.href:null; } catch { return null; } };
 
+const isDesktop = window.browserAPI?.nativeTabs === true;
 const tabs = [];
 let activeTabId = null;
 let nextId = 1;
@@ -36,12 +37,13 @@ function createTab(url = HOMEPAGE) {
   `;
   tabsContainer.appendChild(tabEl);
 
-  // Iframe
-  const iframe = document.createElement('iframe');
+  // Electron uses Chromium's separate guest browsing process; Cloudflare Pages uses limited iframes.
+  const iframe = document.createElement(isDesktop?'webview':'iframe');
   iframe.src = 'about:blank';
   iframe.dataset.id = id;
   iframe.setAttribute('referrerpolicy', 'no-referrer');
-  iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-popups');
+  if(!isDesktop)iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-popups');
+  else iframe.setAttribute('partition','persist:warlike-browser');
   framesContainer.appendChild(iframe);
   const notice=document.createElement('section');notice.className='browser-notice';notice.dataset.id=id;framesContainer.appendChild(notice);
 
@@ -66,7 +68,7 @@ function createTab(url = HOMEPAGE) {
   });
 
   // --- Chargement ---
-  iframe.addEventListener('load', () => {
+  iframe.addEventListener(isDesktop?'did-finish-load':'load', () => {
     // On ne peut pas lire le titre d'un iframe cross-origin,
     // on affiche donc le domaine à la place.
     try {
@@ -78,6 +80,16 @@ function createTab(url = HOMEPAGE) {
     }
   });
 
+  if(isDesktop){
+    const syncNavigation=(location)=>{const next=safeHttpUrl(location);if(!next)return;tab.currentUrl=next;
+      if(tab.history[tab.historyIndex]!==next){tab.history=tab.history.slice(0,tab.historyIndex+1);tab.history.push(next);tab.historyIndex=tab.history.length-1;}
+      if(activeTabId===id){urlBar.value=next;updateNavButtons()}
+    };
+    iframe.addEventListener('did-navigate',e=>syncNavigation(e.url));
+    iframe.addEventListener('did-navigate-in-page',e=>{if(e.isMainFrame)syncNavigation(e.url)});
+    iframe.addEventListener('page-title-updated',e=>{tabEl.querySelector('.tab-title').textContent=String(e.title||'Nouvel onglet').slice(0,70)});
+    iframe.addEventListener('did-fail-load',e=>{if(e.isMainFrame!==false&&e.errorCode!==-3){showNotice(tab,'Erreur de navigation',String(e.errorDescription||'Le site est inaccessible.'),tab.currentUrl)}});
+  }
   tabs.push(tab);
   loadUrlInTab(tab,url);
   activateTab(id);
@@ -149,11 +161,12 @@ function loadUrlInTab(tab, url) {
  if(url===HOMEPAGE){
   tab.iframe.src='about:blank';
   showNotice(tab,'WarLike Browser','Bienvenue. Saisis une adresse ou une recherche. Certains sites refusent les pages intégrées ; utilise le bouton d’ouverture externe pour les consulter.');
- }else if(isKnownBlocked(url)){
+ }else if(!isDesktop&&isKnownBlocked(url)){
   tab.iframe.src='about:blank';
   showNotice(tab,'Affichage intégré indisponible','Ce site limite son affichage dans les fenêtres intégrées. Il peut être ouvert dans un véritable onglet du navigateur système.',url);
  }else{
-  tab.iframe.src=url;
+  if(isDesktop){tab.iframe.src=url;tab.notice.classList.remove('iframe-help')}else tab.iframe.src=url;
+  if(isDesktop){if(activeTabId===tab.id)urlBar.value=url;return}
   const button=document.createElement('button');button.textContent='Ouvrir dans le navigateur système ↗';button.onclick=()=>openExternal(url);
   const info=document.createElement('span');info.textContent='La page reste vide ou refuse de s’ouvrir ?';
   tab.notice.append(info,button);tab.notice.classList.add('iframe-help');
@@ -191,7 +204,7 @@ function goBack() {
   const tab = getActiveTab();
   if (!tab || tab.historyIndex <= 0) return;
   tab.historyIndex--;
-  loadUrlInTab(tab, tab.history[tab.historyIndex]);
+  if(isDesktop&&tab.iframe.canGoBack?.())tab.iframe.goBack();else loadUrlInTab(tab,tab.history[tab.historyIndex]);
   updateNavButtons();
 }
 
@@ -199,14 +212,14 @@ function goForward() {
   const tab = getActiveTab();
   if (!tab || tab.historyIndex >= tab.history.length - 1) return;
   tab.historyIndex++;
-  loadUrlInTab(tab, tab.history[tab.historyIndex]);
+  if(isDesktop&&tab.iframe.canGoForward?.())tab.iframe.goForward();else loadUrlInTab(tab,tab.history[tab.historyIndex]);
   updateNavButtons();
 }
 
 function reload() {
   const tab = getActiveTab();
   if (!tab) return;
-  loadUrlInTab(tab,tab.currentUrl);
+  if(isDesktop&&tab.currentUrl!==HOMEPAGE)tab.iframe.reload();else loadUrlInTab(tab,tab.currentUrl);
 }
 
 // -------- Écouteurs boutons --------
