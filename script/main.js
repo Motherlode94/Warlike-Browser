@@ -22,7 +22,7 @@ function createWindow() {
   // The browser chrome must not navigate to remote origins.
   win.webContents.on('will-navigate', event => event.preventDefault());
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  win.loadFile('index.html');
+  win.loadFile(path.join(__dirname,'..','index.html'));
   // win.webContents.openDevTools(); // décommenter pour debug
 }
 
