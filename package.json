@@ -1,12 +1,52 @@
 {
   "name": "warlike-browser",
-  "version": "0.1.0",
-  "description": "Navigateur custom ArtVibe / Warlike Gaming Corps",
+  "version": "0.2.0",
+  "description": "WarLike Browser - navigateur de bureau Chromium",
   "main": "script/main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "check": "node --check script/main.js && node --check script/preload.js && node --check script/renderer.js && node --test tests/*.test.mjs",
+    "dist:win": "electron-builder --win nsis portable --x64"
   },
   "devDependencies": {
-    "electron": "^31.0.0"
+    "electron": "^31.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.warlike.browser",
+    "productName": "WarLike Browser",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "index.html",
+      "css/**/*",
+      "script/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "artifactName": "WarLike-Browser-${version}-${arch}-${os}.${ext}"
   }
 }
