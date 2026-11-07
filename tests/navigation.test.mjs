@@ -34,3 +34,17 @@ test('google.fr and regional Google domains use fallback on Pages, native browsi
  assert.ok(read('script/preload.js').includes('nativeTabs: true'));
  assert.ok(read('script/main.js').includes('will-attach-webview'));
 });
+
+test('Windows build includes both installer and portable Chromium application',()=>{
+ const manifest=JSON.parse(read('package.json'));
+ assert.equal(manifest.main,'script/main.js');
+ assert.equal(manifest.build.appId,'com.warlike.browser');
+ assert.ok(manifest.scripts['dist:win'].includes('electron-builder'));
+ assert.ok(manifest.build.win.target.some(t=>t.target==='nsis'));
+ assert.ok(manifest.build.win.target.some(t=>t.target==='portable'));
+ for(const file of ['index.html','css/**/*','script/**/*'])assert.ok(manifest.build.files.includes(file));
+ const workflow=read('.github/workflows/windows.yml');
+ assert.ok(workflow.includes('windows-latest'));
+ assert.ok(workflow.includes('npm run dist:win'));
+ assert.ok(workflow.includes('upload-artifact'));
+});
