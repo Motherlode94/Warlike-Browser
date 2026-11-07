@@ -1,5 +1,5 @@
 // main.js — processus principal Electron
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
 function createWindow() {
@@ -21,7 +21,15 @@ function createWindow() {
 
   // The browser chrome must not navigate to remote origins.
   win.webContents.on('will-navigate', event => event.preventDefault());
-  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      const target = new URL(url);
+      if (['https:', 'http:'].includes(target.protocol) && !target.username && !target.password) {
+        shell.openExternal(target.href).catch(() => {});
+      }
+    } catch (_) {}
+    return { action: 'deny' };
+  });
   win.loadFile(path.join(__dirname,'..','index.html'));
   // win.webContents.openDevTools(); // décommenter pour debug
 }
