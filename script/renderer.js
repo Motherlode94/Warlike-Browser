@@ -10,7 +10,10 @@ const reloadBtn = document.getElementById('reload-btn');
 const goBtn = document.getElementById('go-btn');
 const newTabBtn = document.getElementById('new-tab-btn');
 
-const HOMEPAGE = 'https://duckduckgo.com';
+const HOMEPAGE = 'warlike:home';
+const IFRAME_BLOCKED_HOSTS = ['duckduckgo.com','google.com','bing.com','youtube.com','facebook.com','instagram.com','github.com'];
+const isKnownBlocked = url => {try{const host=new URL(url).hostname.toLowerCase();return IFRAME_BLOCKED_HOSTS.some(domain=>host===domain||host.endsWith('.'+domain))}catch{return false}};
+const openExternal = url => { const safe=safeHttpUrl(url);if(safe)window.open(safe,'_blank','noopener,noreferrer'); };
 const SEARCH_ENGINE = (q) => `https://duckduckgo.com/?q=${encodeURIComponent(q)}`;
 const safeHttpUrl = (value) => { try { const u=new URL(value); return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password?u.href:null; } catch { return null; } };
 
@@ -20,7 +23,7 @@ let nextId = 1;
 
 // -------- Création d'onglet --------
 function createTab(url = HOMEPAGE) {
-  url = safeHttpUrl(url) || HOMEPAGE;
+  url = url === HOMEPAGE ? HOMEPAGE : safeHttpUrl(url) || HOMEPAGE;
   const id = nextId++;
 
   // Élément UI
@@ -35,17 +38,19 @@ function createTab(url = HOMEPAGE) {
 
   // Iframe
   const iframe = document.createElement('iframe');
-  iframe.src = url;
+  iframe.src = 'about:blank';
   iframe.dataset.id = id;
   iframe.setAttribute('referrerpolicy', 'no-referrer');
   iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-popups');
   framesContainer.appendChild(iframe);
+  const notice=document.createElement('section');notice.className='browser-notice';notice.dataset.id=id;framesContainer.appendChild(notice);
 
   // Objet onglet (avec historique manuel — impossible de lire history cross-origin)
   const tab = {
     id,
     tabEl,
     iframe,
+    notice,
     history: [url],
     historyIndex: 0,
     currentUrl: url
@@ -74,6 +79,7 @@ function createTab(url = HOMEPAGE) {
   });
 
   tabs.push(tab);
+  loadUrlInTab(tab,url);
   activateTab(id);
   return id;
 }
@@ -84,10 +90,11 @@ function activateTab(id) {
   tabs.forEach(t => {
     t.tabEl.classList.toggle('active', t.id === id);
     t.iframe.classList.toggle('active', t.id === id);
+    t.notice.classList.toggle('active', t.id === id);
   });
   const active = getActiveTab();
   if (active) {
-    urlBar.value = active.currentUrl;
+    urlBar.value = active.currentUrl===HOMEPAGE?'':active.currentUrl;
     updateNavButtons();
   }
 }
@@ -100,6 +107,7 @@ function closeTab(id) {
   const tab = tabs[idx];
   tab.tabEl.remove();
   tab.iframe.remove();
+  tab.notice.remove();
   tabs.splice(idx, 1);
 
   if (tabs.length === 0) {
@@ -122,13 +130,35 @@ function updateNavButtons() {
   forwardBtn.disabled = tab.historyIndex >= tab.history.length - 1;
 }
 
+function showNotice(tab, heading, detail, url = null) {
+ tab.iframe.style.display='none';
+ tab.notice.replaceChildren();
+ const title=document.createElement('h1');title.textContent=heading;
+ const text=document.createElement('p');text.textContent=detail;
+ tab.notice.append(title,text);
+ if(url){
+  const button=document.createElement('button');button.textContent='Ouvrir dans le navigateur système ↗';
+  button.onclick=()=>openExternal(url);tab.notice.append(button);
+ }
+}
 function loadUrlInTab(tab, url) {
-  url=safeHttpUrl(url);if(!url)return;
-  tab.currentUrl = url;
-  tab.iframe.src = url;
-  if (activeTabId === tab.id) {
-    urlBar.value = url;
-  }
+ if(url!==HOMEPAGE)url=safeHttpUrl(url);
+ if(!url)return;
+ tab.currentUrl=url;
+ tab.iframe.style.display='';tab.notice.replaceChildren();
+ if(url===HOMEPAGE){
+  tab.iframe.src='about:blank';
+  showNotice(tab,'WarLike Browser','Bienvenue. Saisis une adresse ou une recherche. Certains sites refusent les pages intégrées ; utilise le bouton d’ouverture externe pour les consulter.');
+ }else if(isKnownBlocked(url)){
+  tab.iframe.src='about:blank';
+  showNotice(tab,'Affichage intégré indisponible','Ce site limite son affichage dans les fenêtres intégrées. Il peut être ouvert dans un véritable onglet du navigateur système.',url);
+ }else{
+  tab.iframe.src=url;
+  const button=document.createElement('button');button.textContent='Ouvrir dans le navigateur système ↗';button.onclick=()=>openExternal(url);
+  const info=document.createElement('span');info.textContent='La page reste vide ou refuse de s’ouvrir ?';
+  tab.notice.append(info,button);tab.notice.classList.add('iframe-help');
+ }
+ if(activeTabId===tab.id)urlBar.value=url===HOMEPAGE?'':url;
 }
 
 // -------- Navigation --------
@@ -176,7 +206,7 @@ function goForward() {
 function reload() {
   const tab = getActiveTab();
   if (!tab) return;
-  tab.iframe.src = tab.currentUrl;
+  loadUrlInTab(tab,tab.currentUrl);
 }
 
 // -------- Écouteurs boutons --------
