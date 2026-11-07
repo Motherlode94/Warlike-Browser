@@ -2,7 +2,7 @@
   "name": "warlike-browser",
   "version": "0.1.0",
   "description": "Navigateur custom ArtVibe / Warlike Gaming Corps",
-  "main": "main.js",
+  "main": "script/main.js",
   "scripts": {
     "start": "electron ."
   },
