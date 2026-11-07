@@ -3,5 +3,6 @@ const { contextBridge } = require('electron');
 
 contextBridge.exposeInMainWorld('browserAPI', {
   version: '0.1.0',
-  name: 'Warlike Browser'
+  name: 'Warlike Browser',
+  nativeTabs: true
 });
