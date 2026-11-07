@@ -1,5 +1,5 @@
 // main.js — processus principal Electron
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
 function createWindow() {
@@ -23,7 +23,7 @@ function createWindow() {
   win.webContents.on('will-attach-webview', (event, webPreferences, params) => {
     try {
       const url = new URL(params.src || 'about:blank');
-      if (!['https:', 'http:', 'about:'].includes(url.protocol) || url.username || url.password) throw Error('Unsafe guest URL');
+      if (!['https:', 'http:'].includes(url.protocol)&&url.href!=='about:blank' || url.username || url.password) throw Error('Unsafe guest URL');
     } catch { event.preventDefault(); return; }
     delete webPreferences.preload;
     webPreferences.nodeIntegration = false;
@@ -32,14 +32,18 @@ function createWindow() {
   });
   // The browser chrome must not navigate to remote origins.
   win.webContents.on('will-navigate', event => event.preventDefault());
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    try {
-      const target = new URL(url);
-      if (['https:', 'http:'].includes(target.protocol) && !target.username && !target.password) {
-        shell.openExternal(target.href).catch(() => {});
-      }
-    } catch (_) {}
-    return { action: 'deny' };
+  const openInWarLike=({url})=>{
+    try{const target=new URL(url);if(['http:','https:'].includes(target.protocol)&&!target.username&&!target.password)win.webContents.send('browser:new-tab',target.href)}catch{}
+    return {action:'deny'};
+  };
+  win.webContents.setWindowOpenHandler(openInWarLike);
+  win.webContents.on('did-attach-webview',(_event,guest)=>{
+    guest.setWindowOpenHandler(openInWarLike);
+    const validate=(event,url)=>{
+      try{const target=new URL(url);if(!['http:','https:'].includes(target.protocol)||target.username||target.password)event.preventDefault()}catch{event.preventDefault()}
+    };
+    guest.on('will-navigate',validate);
+    guest.on('will-redirect',validate);
   });
   win.loadFile(path.join(__dirname,'..','index.html'));
   // win.webContents.openDevTools(); // décommenter pour debug

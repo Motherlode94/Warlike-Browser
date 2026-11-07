@@ -1,6 +1,6 @@
 {
   "name": "warlike-browser",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "WarLike Browser - navigateur de bureau Chromium",
   "main": "script/main.js",
   "scripts": {
@@ -45,8 +45,11 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "artifactName": "WarLike-Browser-Setup-${version}-${arch}.${ext}"
     },
-    "artifactName": "WarLike-Browser-${version}-${arch}-${os}.${ext}"
+    "portable": {
+      "artifactName": "WarLike-Browser-Portable-${version}-${arch}.${ext}"
+    }
   }
 }

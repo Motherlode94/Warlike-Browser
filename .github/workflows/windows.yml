@@ -2,6 +2,7 @@ name: WarLike Browser Windows package
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     tags:
       - 'browser-v*'
 permissions:

@@ -17,7 +17,7 @@ npm start
 
 ## Installer sans Node.js
 
-Le workflow GitHub Actions [WarLike Browser Windows package](.github/workflows/windows.yml), lancé manuellement depuis l'onglet **Actions** (Run workflow), construit deux fichiers Windows non signés :
+Le workflow GitHub Actions [WarLike Browser Windows package](.github/workflows/windows.yml), lancé sur `main` ou manuellement depuis l'onglet **Actions** (Run workflow), construit deux fichiers Windows non signés :
 - un installateur NSIS ;
 - une édition portable exécutable.
 
@@ -38,3 +38,13 @@ Ces binaires ne sont **pas signés numériquement** ; Windows SmartScreen peut a
 Le packaging n'est pas une preuve de compatibilité de tous les sites : tester le rendu, les connexions, la navigation, les téléchargements et les permissions sous Windows. Electron exige des mises à jour de sécurité Chromium régulières. Le projet n'est pas encore un navigateur destiné aux opérations sensibles et ne possède pas de signature de code, de moteur d'extensions complet ni de dispositif de mises à jour automatiques.
 
 Le site Cloudflare n'est pas le moteur de navigation Windows. Il ne faut pas tenter de contourner les protections anti-iframe des sites distants.
+
+## Corrections de navigation 0.2.1
+
+Les panneaux d’accueil et d’erreur sont masqués dès qu’une page est affichée ; aucun panneau vide ne doit intercepter les clics. Les pages Web intégrées conservent leur origine pour charger leurs modules et utiliser leur stockage, et peuvent demander le plein écran ou le verrouillage du pointeur.
+
+Sur Windows, les liens ouvrant une nouvelle fenêtre créent un onglet WarLike. Retour/Avancer utilisent l’historique Chromium, y compris après une redirection. Les pages distantes ne reçoivent ni Node.js ni le pont de l’interface.
+
+Ces corrections ne transforment pas Cloudflare Pages en moteur Chromium distant : les sites qui interdisent les iframes restent indisponibles dans la version Web. Aucun proxy ni serveur de navigation distant n’est configuré sur ce projet.
+
+`npm run check` couvre aussi le panneau masqué, la navigation native, les nouveaux onglets et les URL locales avec port. Le rendu réel de l’application Electron sous Windows reste à valider sur Windows.

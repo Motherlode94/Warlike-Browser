@@ -15,12 +15,13 @@ test('Desktop boot paths match packaged repository and navigation is sandboxed',
  assert.equal(pkg.main,'script/main.js');
  assert.match(main,/path\.join\(__dirname,'\.\.','index\.html'\)/);
  assert.match(main,/setWindowOpenHandler/);
- assert.match(main,/shell\.openExternal/);
+ assert.match(main,/browser:new-tab/);
+ assert.doesNotMatch(main,/shell\.openExternal/);
  assert.match(main,/will-navigate/);
 });
 test('Site content remains an iframe, clearly labeled as limited',()=>{
  assert.match(read('index.html'),/webviews-container/);
- assert.match(read('script/renderer.js'),/allow-forms allow-scripts allow-popups/);
+ assert.match(read('script/renderer.js'),/allow-forms allow-scripts allow-same-origin allow-popups/);
  assert.match(read('css/style.css'),/browser-notice\.active/);
 });
 
@@ -42,6 +43,7 @@ test('Windows build includes both installer and portable Chromium application',(
  assert.ok(manifest.scripts['dist:win'].includes('electron-builder'));
  assert.ok(manifest.build.win.target.some(t=>t.target==='nsis'));
  assert.ok(manifest.build.win.target.some(t=>t.target==='portable'));
+ assert.notEqual(manifest.build.nsis.artifactName,manifest.build.portable.artifactName);
  for(const file of ['index.html','css/**/*','script/**/*'])assert.ok(manifest.build.files.includes(file));
  const workflow=read('.github/workflows/windows.yml');
  assert.ok(workflow.includes('windows-latest'));

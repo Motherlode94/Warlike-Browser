@@ -1,5 +1,4 @@
-// renderer.js — version pure HTML/JS (iframe)
-// ⚠ Limitation : certains sites (Google, YouTube, Facebook...) refusent d'être chargés en iframe.
+// Chromium tabs in the desktop application; sandboxed frames on the static website.
 
 const tabsContainer = document.getElementById('tabs');
 const framesContainer = document.getElementById('webviews-container');
@@ -42,10 +41,13 @@ function createTab(url = HOMEPAGE) {
   iframe.src = 'about:blank';
   iframe.dataset.id = id;
   iframe.setAttribute('referrerpolicy', 'no-referrer');
-  if(!isDesktop)iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-popups');
+  if(!isDesktop)iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-popups allow-downloads allow-pointer-lock');
   else iframe.setAttribute('partition','persist:warlike-browser');
+  iframe.setAttribute('allow','autoplay; fullscreen; gamepad');
+  iframe.setAttribute('allowfullscreen','');
+  iframe.setAttribute('title','Page de navigation');
   framesContainer.appendChild(iframe);
-  const notice=document.createElement('section');notice.className='browser-notice';notice.dataset.id=id;framesContainer.appendChild(notice);
+  const notice=document.createElement('section');notice.className='browser-notice';notice.dataset.id=id;notice.hidden=true;framesContainer.appendChild(notice);
 
   // Objet onglet (avec historique manuel — impossible de lire history cross-origin)
   const tab = {
@@ -55,6 +57,7 @@ function createTab(url = HOMEPAGE) {
     notice,
     history: [url],
     historyIndex: 0,
+    nativeReady: false,
     currentUrl: url
   };
 
@@ -72,6 +75,7 @@ function createTab(url = HOMEPAGE) {
     // On ne peut pas lire le titre d'un iframe cross-origin,
     // on affiche donc le domaine à la place.
     try {
+      if(tab.currentUrl===HOMEPAGE){tabEl.querySelector('.tab-title').textContent='Accueil';return}
       const u = new URL(tab.currentUrl);
       const label = u.hostname.replace(/^www\./, '') || 'Page';
       tabEl.querySelector('.tab-title').textContent = label;
@@ -81,10 +85,12 @@ function createTab(url = HOMEPAGE) {
   });
 
   if(isDesktop){
-    const syncNavigation=(location)=>{const next=safeHttpUrl(location);if(!next)return;tab.currentUrl=next;
-      if(tab.history[tab.historyIndex]!==next){tab.history=tab.history.slice(0,tab.historyIndex+1);tab.history.push(next);tab.historyIndex=tab.history.length-1;}
+    const syncNavigation=(location)=>{if(location==='about:blank'){tab.currentUrl=HOMEPAGE;showHome(tab);if(activeTabId===id){urlBar.value='';updateNavButtons()}return}const next=safeHttpUrl(location);if(!next)return;tab.currentUrl=next;
       if(activeTabId===id){urlBar.value=next;updateNavButtons()}
     };
+    iframe.addEventListener('dom-ready',()=>{tab.nativeReady=true;if(activeTabId===id)updateNavButtons()});
+    iframe.addEventListener('did-start-loading',()=>{if(tab.currentUrl!==HOMEPAGE)hideNotice(tab)});
+    iframe.addEventListener('did-stop-loading',()=>{if(activeTabId===id)updateNavButtons()});
     iframe.addEventListener('did-navigate',e=>syncNavigation(e.url));
     iframe.addEventListener('did-navigate-in-page',e=>{if(e.isMainFrame)syncNavigation(e.url)});
     iframe.addEventListener('page-title-updated',e=>{tabEl.querySelector('.tab-title').textContent=String(e.title||'Nouvel onglet').slice(0,70)});
@@ -138,38 +144,42 @@ function getActiveTab() {
 function updateNavButtons() {
   const tab = getActiveTab();
   if (!tab) return;
+  if(isDesktop&&tab.nativeReady){
+    try{backBtn.disabled=!tab.iframe.canGoBack();forwardBtn.disabled=!tab.iframe.canGoForward();return}catch{/* guest is not ready yet */}
+  }
   backBtn.disabled = tab.historyIndex <= 0;
   forwardBtn.disabled = tab.historyIndex >= tab.history.length - 1;
 }
 
+function hideNotice(tab){tab.notice.replaceChildren();tab.notice.hidden=true;tab.notice.classList.remove('iframe-help');tab.iframe.style.display='';}
 function showNotice(tab, heading, detail, url = null) {
+ tab.notice.hidden=false;tab.notice.classList.remove('iframe-help');
  tab.iframe.style.display='none';
  tab.notice.replaceChildren();
  const title=document.createElement('h1');title.textContent=heading;
  const text=document.createElement('p');text.textContent=detail;
  tab.notice.append(title,text);
- if(url){
+ if(url&&!isDesktop){
   const button=document.createElement('button');button.textContent='Ouvrir dans le navigateur système ↗';
   button.onclick=()=>openExternal(url);tab.notice.append(button);
  }
 }
+function showHome(tab){showNotice(tab,'WarLike Browser',isDesktop?'Saisis une adresse ou une recherche pour naviguer dans tes onglets Chromium WarLike.':'Saisis une adresse pour ouvrir un site compatible avec l’affichage intégré. Les sites qui refusent les iframes nécessitent la version Windows de WarLike Browser.');}
 function loadUrlInTab(tab, url) {
  if(url!==HOMEPAGE)url=safeHttpUrl(url);
  if(!url)return;
  tab.currentUrl=url;
- tab.iframe.style.display='';tab.notice.replaceChildren();
+ hideNotice(tab);
  if(url===HOMEPAGE){
   tab.iframe.src='about:blank';
-  showNotice(tab,'WarLike Browser','Bienvenue. Saisis une adresse ou une recherche. Certains sites refusent les pages intégrées ; utilise le bouton d’ouverture externe pour les consulter.');
+  showHome(tab);
  }else if(!isDesktop&&isKnownBlocked(url)){
   tab.iframe.src='about:blank';
   showNotice(tab,'Affichage intégré indisponible','Ce site limite son affichage dans les fenêtres intégrées. Il peut être ouvert dans un véritable onglet du navigateur système.',url);
  }else{
   if(isDesktop){tab.iframe.src=url;tab.notice.classList.remove('iframe-help')}else tab.iframe.src=url;
   if(isDesktop){if(activeTabId===tab.id)urlBar.value=url;return}
-  const button=document.createElement('button');button.textContent='Ouvrir dans le navigateur système ↗';button.onclick=()=>openExternal(url);
-  const info=document.createElement('span');info.textContent='La page reste vide ou refuse de s’ouvrir ?';
-  tab.notice.append(info,button);tab.notice.classList.add('iframe-help');
+  // A loaded page keeps the entire viewport: no empty notice intercepts input.
  }
  if(activeTabId===tab.id)urlBar.value=url===HOMEPAGE?'':url;
 }
@@ -183,9 +193,10 @@ function navigate(input) {
   if (!query) return;
 
   let url;
-  const looksLikeUrl = /^https?:\/\//i.test(query) || /^[\w-]+(\.[\w-]+)+([\/?#].*)?$/i.test(query);
+  const looksLikeUrl = /^https?:\/\//i.test(query) || /^(?:localhost|[\w-]+(?:\.[\w-]+)+|\[[0-9a-f:]+\])(?::\d{1,5})?(?:[\/?#].*)?$/i.test(query);
   if (looksLikeUrl) {
-    url = /^https?:\/\//i.test(query) ? query : 'https://' + query;
+    const local=/^(?:localhost|127\.\d+\.\d+\.\d+|\[::1\])(?::|[\/?#]|$)/i.test(query);
+    url = /^https?:\/\//i.test(query) ? query : (local?'http://':'https://') + query;
   } else {
     url = SEARCH_ENGINE(query);
   }
@@ -202,24 +213,26 @@ function navigate(input) {
 
 function goBack() {
   const tab = getActiveTab();
-  if (!tab || tab.historyIndex <= 0) return;
-  tab.historyIndex--;
-  if(isDesktop&&tab.iframe.canGoBack?.())tab.iframe.goBack();else loadUrlInTab(tab,tab.history[tab.historyIndex]);
+  if(!tab)return;
+  if(isDesktop&&tab.nativeReady){if(tab.iframe.canGoBack())tab.iframe.goBack();return}
+  if(tab.historyIndex<=0)return;
+  loadUrlInTab(tab,tab.history[--tab.historyIndex]);
   updateNavButtons();
 }
 
 function goForward() {
   const tab = getActiveTab();
-  if (!tab || tab.historyIndex >= tab.history.length - 1) return;
-  tab.historyIndex++;
-  if(isDesktop&&tab.iframe.canGoForward?.())tab.iframe.goForward();else loadUrlInTab(tab,tab.history[tab.historyIndex]);
+  if(!tab)return;
+  if(isDesktop&&tab.nativeReady){if(tab.iframe.canGoForward())tab.iframe.goForward();return}
+  if(tab.historyIndex>=tab.history.length-1)return;
+  loadUrlInTab(tab,tab.history[++tab.historyIndex]);
   updateNavButtons();
 }
 
 function reload() {
   const tab = getActiveTab();
   if (!tab) return;
-  if(isDesktop&&tab.currentUrl!==HOMEPAGE)tab.iframe.reload();else loadUrlInTab(tab,tab.currentUrl);
+  if(isDesktop&&tab.nativeReady&&tab.currentUrl!==HOMEPAGE){hideNotice(tab);tab.iframe.reload()}else loadUrlInTab(tab,tab.currentUrl);
 }
 
 // -------- Écouteurs boutons --------
@@ -259,5 +272,7 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Only the trusted desktop bridge can request new native tabs.
+if(isDesktop)window.browserAPI.onNewTab?.(url=>{const safe=safeHttpUrl(url);if(safe)createTab(safe)});
 // -------- Démarrage --------
 createTab();
