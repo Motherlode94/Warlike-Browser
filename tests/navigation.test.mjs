@@ -41,6 +41,7 @@ test('Windows build includes both installer and portable Chromium application',(
  assert.equal(manifest.main,'script/main.js');
  assert.equal(manifest.build.appId,'com.warlike.browser');
  assert.ok(manifest.scripts['dist:win'].includes('electron-builder'));
+ assert.ok(manifest.scripts['dist:win'].includes('--publish never'));
  assert.ok(manifest.build.win.target.some(t=>t.target==='nsis'));
  assert.ok(manifest.build.win.target.some(t=>t.target==='portable'));
  assert.notEqual(manifest.build.nsis.artifactName,manifest.build.portable.artifactName);
