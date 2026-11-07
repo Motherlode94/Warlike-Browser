@@ -51,5 +51,6 @@
     "portable": {
       "artifactName": "WarLike-Browser-Portable-${version}-${arch}.${ext}"
     }
-  }
+  },
+  "author": "WarLike"
 }
